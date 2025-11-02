@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bizning kelajak yo'limiz — Slayd Prezentatsiya</title>
+  <style>
+    /* ========== RESET ========== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html,body { height: 100%; font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: #111; color: #fff; }
+
+    /* ========== LAYOUT ========== */
+    .player {
+      width: 100%;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #000;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      align-items: end;
+      justify-items: center;
+      transition: opacity 0.9s ease, transform 0.9s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .slide.show { opacity: 1; pointer-events: auto; transform: translateY(0); z-index: 2; }
+
+    /* background image layer (cover) */
+    .slide .bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: saturate(1.05) contrast(1.05);
+      transform: scale(1.03);
+      transition: transform 10s linear;
+    }
+    .slide.show .bg { transform: scale(1); }
+
+    /* dark gradient overlay for text readability */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.25) 10%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.72) 100%);
+      pointer-events: none;
+    }
+
+    /* content container */
+    .content {
+      position: relative;
+      z-index: 3;
+      width: min(1200px, 94%);
+      padding: 32px;
+      display: grid;
+      gap: 18px;
+      align-items: end;
+    }
+
+    .branding {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      font-weight:700;
+      letter-spacing:0.4px;
+    }
+    .branding .flag {
+      width:46px; height:30px;
+      background: linear-gradient(90deg,#00a3e0 0 33%, #00913a 33% 66%, #f5da0a 66% 100%);
+      border-radius:4px; box-shadow:0 3px 10px rgba(0,0,0,0.4);
+      display:inline-block;
+    }
+
+    /* Text box: can be top or bottom depending on slide type */
+    .text-box {
+      background: rgba(0,0,0,0.38);
+      padding: 20px 24px;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      width: 100%;
+      max-width: 1100px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+    }
+
+    .title {
+      font-size: clamp(20px, 3.2vw, 36px);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+      text-shadow: 0 4px 18px rgba(0,0,0,0.5);
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      font-size: clamp(14px, 1.6vw, 18px);
+      opacity: 0.95;
+      margin-bottom: 8px;
+    }
+
+    .bullets {
+      margin-top:8px;
+      font-size: clamp(12px, 1.2vw, 16px);
+      line-height: 1.6;
+    }
+    .bullets li { margin:6px 0; }
+
+    /* navigation controls */
+    .controls {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .controls button {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    .controls button:hover { background: rgba(255,255,255,0.18); }
+
+    .progress {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 0;
+      height: 6px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+      z-index: 9;
+    }
+    .progress > i { display:block; height:100%; width:0%; background: linear-gradient(90deg,#f5da0a,#00a3e0,#00913a); transition: width 0.2s linear; }
+
+    /* small note for phone */
+    .note {
+      position: absolute;
+      left:18px; top:18px;
+      z-index:9;
+      background: rgba(0,0,0,0.35);
+      padding:8px 12px;
+      border-radius:8px;
+      font-size:12px;
+      display:flex; gap:8px; align-items:center;
+    }
+
+    /* responsive adjustments */
+    @media (max-width:800px){
+      .content { padding:18px; }
+      .text-box { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="player" id="player">
+    <!-- slides will be injected by JS -->
+    <div class="controls" id="controls">
+      <button id="prevBtn">⟵</button>
+      <button id="pauseBtn">❚❚</button>
+      <button id="nextBtn">⟶</button>
+      <button id="restartBtn">🔁</button>
+    </div>
+
+    <div class="note"><strong>Bizning kelajak yo'limiz</strong> — 11-sinf BSB-1</div>
+    <div class="progress"><i id="prog"></i></div>
+  </div>
+
+  <script>
+
+    const slides = [
+      {
+        image: "https://images.unsplash.com/photo-1528747045269-390fe33c19d1?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=1",
+        layout: "top",
+        title: "11-sinf BSB-1 loyiha ishi",
+        body: "Mavzu: “Vatan taraqqiyotiga men ham mas’ulman: Oila — jamiyatning asosiy bo‘g‘ini.”"
+      },
+      {
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=2",
+        layout: "side",
+        title: "Loyiha maqsadi",
+        bullets: [
+          "Oilarning jamiyat taraqqiyotidagi o‘rni va mas’uliyatini tushuntirish.",
+          "Fuqarolik ongini va huquqiy madaniyatni rivojlantirish.",
+          "Vatan ravnaqi uchun har bir fuqaroning mas’uliyatini anglash."
+        ]
+      },
+      {
+        image: "https://images.unsplash.com/photo-1494812581842-9d70c4d57f0a?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=3",
+        layout: "top",
+        title: "Muammo",
+        body: "Jamiyatda ayrim yoshlarning oilaviy qadriyatlarga befarqligi va huquqiy bilimlarning yetishmasligi jamiyat taraqqiyotiga salbiy ta’sir ko‘rsatmoqda."
+      },
+      {
+        image: "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=4",
+        layout: "side",
+        title: "Shakllanadigan ko‘nikmalar",
+        bullets: [
+          "Tanqidiy va tahliliy fikrlash",
+          "Fuqarolik mas’uliyati va huquqiy ong",
+          "Hamkorlik va jamoada ishlash",
+          "Nutq madaniyati va taqdimot qilish"
+        ]
+      },
+      {
+        image: "https://images.unsplash.com/photo-1532074205216-d0e1f3f9f9f4?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=5",
+        layout: "top",
+        title: "Jamoalar va bajarish bosqichlari",
+        bullets: [
+          "Jamoalarga 3–4 nafar o‘quvchi taqsimlanadi",
+          "Maqsad va muammoni aniqlash",
+          "Ma’lumot yig‘ish: so‘rovnoma, intervyu",
+          "Tahlil va tavsiyalar ishlab chiqish"
+        ]
+      },
+      {
+        image: "https://images.unsplash.com/photo-1487014679447-9f8336841d58?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=6",
+        layout: "side",
+        title: "Ma’lumot yig‘ish usullari",
+        body: "So‘rovnomalar, ota-onalar bilan suhbatlar, mahalla faollari va huquqshunoslar bilan intervyular orqali ma’lumot to‘planadi."
+      },
+      {
+        image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=7",
+        layout: "top",
+        title: "Tahlil va natijalar",
+        bullets: [
+          "Oila qadriyatlarini tiklash bo‘yicha tavsiyalar",
+          "Fuqarolik ongini oshirish yo‘llari",
+          "Yoshlarni huquqiy bilimlar bilan ta’minlash"
+        ]
+      },
+      {
+        image: "https://images.unsplash.com/photo-1444090542259-0af8fa96557e?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=8",
+        layout: "side",
+        title: "Tavsiyalar",
+        bullets: [
+          "Maktab va mahalla hamkorligini kuchaytirish",
+          "Oilaviy qadriyatlarni ta’lim jarayoniga kiritish",
+          "Fuqarolik huquqlari haqida treninglar o‘tkazish"
+        ]
+      },
+      {
+        image: "https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=9",
+        layout: "top",
+        title: "To‘liq reja (qo‘shimcha)",
+        body: "Reja: mavzu tanlash, maqsad, muammo, usullar, ma’lumot yig‘ish, tahlil, tavsiyalar va yakuniy taqdimot. Har bosqichda mas'ul shaxs va muddat belgilanadi."
+      },
+      {
+        image: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=10",
+        layout: "side",
+        title: "Xulosa va kredit",
+        body: "Sizning hissangiz muhim — Vatan taraqqiyoti har birimizning mas'uliyatimizdir. Loyihani tayyorlagan: 11-sinf BSB-1."
+      }
+    ];
+
+    /* ========== Konfiguratsiya ========== */
+    const SLIDE_DURATION = 6.0; // sekund (har bir slayd)
+    const TRANSITION = 0.9;      // sekund (CSS transition bilan sinxron)
+    let current = 0;
+    let timer = null;
+    let playing = true;
+    let progressInterval = null;
+
+    /** Helper: create slide DOM */
+    function createSlide(s, index) {
+      const slide = document.createElement('section');
+      slide.className = 'slide';
+      slide.dataset.index = index;
+
+      // background
+      const bg = document.createElement('div');
+      bg.className = 'bg';
+      bg.style.backgroundImage = `url("${s.image}")`;
+      slide.appendChild(bg);
+
+      // overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      slide.appendChild(overlay);
+
+      // content
+      const content = document.createElement('div');
+      content.className = 'content';
+
+      // brand row
+      const brand = document.createElement('div');
+      brand.className = 'branding';
+      brand.innerHTML = `<span class="flag" aria-hidden></span><span>Bizning kelajak yo'limiz — 11-sinf BSB-1</span>`;
+      content.appendChild(brand);
+
+      // text box
+      const box = document.createElement('div');
+      box.className = 'text-box';
+
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = s.title || '';
+      box.appendChild(title);
+
+      if (s.body) {
+        const sub = document.createElement('div');
+        sub.className = 'subtitle';
+        sub.textContent = s.body;
+        box.appendChild(sub);
+      }
+      if (s.bullets && s.bullets.length) {
+        const ul = document.createElement('ul');
+        ul.className = 'bullets';
+        s.bullets.forEach(b => {
+          const li = document.createElement('li');
+          li.textContent = '• ' + b;
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+      }
+
+      content.appendChild(box);
+      slide.appendChild(content);
+
+      // custom layout classes (we'll vary appearance via CSS if needed)
+      if (s.layout === 'side') {
+        box.style.maxWidth = '640px';
+      } else {
+        box.style.maxWidth = '980px';
+      }
+
+      return slide;
+    }
+
+    /* Inject slides into DOM */
+    const player = document.getElementById('player');
+    slides.forEach((s, i) => player.appendChild(createSlide(s, i)));
+
+    const slideElems = Array.from(document.querySelectorAll('.slide'));
+    const prog = document.getElementById('prog');
+
+    function showSlide(i) {
+      // clamp
+      if (i < 0) i = slides.length - 1;
+      if (i >= slides.length) i = 0;
+      // hide all
+      slideElems.forEach((el, idx) => {
+        if (idx === i) {
+          el.classList.add('show');
+          // slight entrance animation
+          el.style.transform = 'translateY(0px)';
+        } else {
+          el.classList.remove('show');
+          el.style.transform = 'translateY(8px)';
+        }
+      });
+      current = i;
+      updateProgressVisual();
+    }
+
+    function nextSlide() {
+      showSlide((current + 1) % slides.length);
+    }
+    function prevSlide() {
+      showSlide((current - 1 + slides.length) % slides.length);
+    }
+
+    function startAutoplay() {
+      stopAutoplay();
+      let elapsed = 0;
+      let lastTick = Date.now();
+      timer = setInterval(() => {
+        const now = Date.now();
+        const dt = (now - lastTick) / 1000;
+        lastTick = now;
+        elapsed += dt;
+        const pct = Math.min(100, (elapsed / SLIDE_DURATION) * 100);
+        prog.style.width = pct + '%';
+        if (elapsed >= SLIDE_DURATION) {
+          elapsed = 0;
+          nextSlide();
+        }
+      }, 100);
+    }
+    function stopAutoplay() {
+      if (timer) { clearInterval(timer); timer = null; }
+      prog.style.width = '0%';
+    }
+
+    function updateProgressVisual() {
+      // animate progress reset
+      prog.style.width = '0%';
+    }
+
+    /* Controls */
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      nextSlide();
+      if (playing) startAutoplay();
+    });
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      prevSlide();
+      if (playing) startAutoplay();
+    });
+    document.getElementById('pauseBtn').addEventListener('click', (e) => {
+      playing = !playing;
+      e.target.textContent = playing ? '❚❚' : '▶';
+      if (playing) startAutoplay(); else stopAutoplay();
+    });
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      showSlide(0);
+      if (playing) startAutoplay();
+    });
+
+    /* Keyboard navigation */
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { nextSlide(); if (playing) startAutoplay(); }
+      if (e.key === 'ArrowLeft') { prevSlide(); if (playing) startAutoplay(); }
+      if (e.key === ' ' ) { // space pause/play
+        e.preventDefault();
+        playing = !playing;
+        document.getElementById('pauseBtn').textContent = playing ? '❚❚' : '▶';
+        if (playing) startAutoplay(); else stopAutoplay();
+      }
+    });
+
+    /* Start */
+    showSlide(0);
+    startAutoplay();
+
+    /* Responsive tweak: pause autoplay while page not visible */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { stopAutoplay(); } else { if (playing) startAutoplay(); }
+    });
+
+    /* Optional: allow tapping slides to pause/play on touch devices */
+    player.addEventListener('click', (e) => {
+      // ignore clicks on controls
+      if (e.target.closest('.controls')) return;
+      playing = !playing;
+      document.getElementById('pauseBtn').textContent = playing ? '❚❚' : '▶';
+      if (playing) startAutoplay(); else stopAutoplay();
+    });
+  </script>
+
+  <audio autoplay loop>
+  <source src="./AudioCutter_Озода_Нурсаидова_Аждодлар.mp3" type="audio/mpeg">
+  Sizning brauzeringiz audio formatni qo‘llamaydi.
+</audio>
+
+</body>
+</html>
